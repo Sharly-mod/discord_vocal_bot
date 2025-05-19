@@ -16,8 +16,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Mapping entre ID des salles d’attente et ID des catégories associées
 WAITING_ROOM_TO_CATEGORY = {
     1299398594402586829: 1374094815788011631,  # Attente 1 → Catégorie 1
-    223456789012345678: 222222222222222222,  # Attente 2 → Catégorie 2
+    1322976976352579636: 1374102251705995274,  # Attente 2 → Catégorie 2
+    1370357006342553620: 1374102357901705367,  # Attente 3 → Catégorie 3
+    1372691483014074569: 1374102284656578691,  # Attente 4 → Catégorie 4
 }
+
 
 # Dictionnaire des vocaux privés avec leur propriétaire
 private_channels = {}
