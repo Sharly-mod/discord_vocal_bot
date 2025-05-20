@@ -62,12 +62,12 @@ class InviteSelect(ui.Select):
 
         options = [
             discord.SelectOption(label=member.display_name, value=str(member.id))
-            for member in members if not member.bot and member != author][:25]  # MAX 25 membres
+            for member in members if not member.bot and member != author][:200]  # MAX 25 membres
 
         super().__init__(
             placeholder="Choisis un membre à inviter",
             min_values=1,
-            max_values > 1,
+            max_values = 200,
             options=options
         )
 
