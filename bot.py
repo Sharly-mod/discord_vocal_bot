@@ -35,7 +35,7 @@ async def on_voice_state_update(member, before, after):
         category_id = WAITING_ROOM_TO_CATEGORY[after.channel.id]
         category = guild.get_channel(category_id)
 
-        vip_role = discord.utils.get(guild.roles, name="VIP++")
+        vip_role = discord.utils.get(guild.roles, name="vip++")
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(connect=False),
