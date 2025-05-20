@@ -72,8 +72,23 @@ class InviteSelect(ui.Select):
         super().__init__(placeholder="Choisis un membre à inviter", min_values=1, max_values=len(options), options=options)
 
     async def callback(self, interaction: Interaction):
-        # idem callback, gérer invitations
+        if interaction.user != self.author:
+            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
+            return
 
+        member_id = int(self.values[0])
+        member = self.voice_channel.guild.get_member(member_id)
+
+        if member:
+            await self.voice_channel.set_permissions(
+            member,
+            connect=True,
+            speak=True,
+            view_channel=True
+        )
+            await interaction.response.send_message(f"✅ {member.mention} peut maintenant rejoindre ton salon.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Membre introuvable.", ephemeral=True)
 class InviteView(ui.View):
     def __init__(self, author, voice_channel, members):
         super().__init__(timeout=60)
@@ -86,7 +101,7 @@ class InviteView(ui.View):
         self.add_item(self.select)
 
         # Ajouter boutons précédents / suivants
-        self.add_item(ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id="prev"))
+        self.add_item(ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id="prev"))            
         self.add_item(ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id="next"))
 
     @ui.button(label="← Précédent", style=discord.ButtonStyle.secondary)
