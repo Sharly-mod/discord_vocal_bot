@@ -112,6 +112,7 @@ class InviteView(ui.View):
         self.members = members
         self.page = page
         self.max_per_page = 25
+        self.total_pages = (len([m for m in members if not m.bot and m != author]) - 1) // self.max_per_page + 1
 
         self.add_item(InviteSelect(author, voice_channel, members, page))
 
