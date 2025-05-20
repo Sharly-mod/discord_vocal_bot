@@ -145,8 +145,9 @@ async def invite(interaction: discord.Interaction):
     channel = author.voice.channel
     owner_id = private_channels.get(channel.id)
 
-    if owner_id != author.id:
-        await interaction.response.send_message("❌ Tu n'es pas le propriétaire de ce salon.", ephemeral=True)
+    owner_id = private_channels.get(channel.id)
+    if owner_id != author.id and not author.guild_permissions.administrator:
+        await interaction.response.send_message("❌ Tu n'es pas le propriétaire de ce salon (ou tu n'as pas les droits admin).", ephemeral=True)
         return
 
     members = interaction.guild.members
