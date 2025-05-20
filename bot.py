@@ -67,7 +67,7 @@ class InviteSelect(ui.Select):
         super().__init__(
             placeholder="Choisis un membre à inviter",
             min_values=1,
-            max_values = 25,
+            max_values > 1,
             options=options
         )
 
