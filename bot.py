@@ -146,17 +146,15 @@ async def invite(interaction: discord.Interaction):
     owner_id = private_channels.get(channel.id)
 
     owner_id = private_channels.get(channel.id)
+    vip_role = discord.utils.get(interaction.guild.roles, name="VIP++")
 
-    # Cherche le rôle "VIP++"
-    vip_role = discord.utils.get(interaction.guild.roles, name="vip++")
+# Vérifie si l’auteur est propriétaire, admin ou VIP++
+    is_owner = owner_id == author.id
+    is_admin = author.guild_permissions.administrator
+    is_vip = vip_role in author.roles if vip_role else False
 
-    # Vérifie si l'auteur est le propriétaire, un admin ou a le rôle VIP++
-    if (
-        owner_id != author.id and 
-        not author.guild_permissions.administrator and
-        (vip_role is None or vip_role not in author.roles)
-    ):
-        await interaction.response.send_message("❌ Tu n'es pas le propriétaire de ce salon (ou tu n'as pas les droits requis).", ephemeral=True)
+    if not (is_owner or is_admin or is_vip):
+        await interaction.response.send_message("❌ Tu n'es pas le propriétaire du salon, ni administrateur, ni VIP++.", ephemeral=True)
         return
 
     members = interaction.guild.members
