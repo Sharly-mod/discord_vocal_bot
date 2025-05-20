@@ -1,4 +1,5 @@
 import discord
+from discord import ui, Interaction
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
@@ -82,30 +83,61 @@ class SelectView(discord.ui.View):
     def __init__(self, channel, members):
         super().__init__()
         self.add_item(MemberSelect(channel, members))
+
+class InviteSelect(ui.Select):
+    def __init__(self, author, voice_channel, members):
+        self.author = author
+        self.voice_channel = voice_channel
+
+        options = [
+            discord.SelectOption(label=member.display_name, value=str(member.id))
+            for member in members if not member.bot and member != author
+        ]
+        super().__init__(placeholder="Choisis un membre à inviter", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: Interaction):
+        if interaction.user != self.author:
+            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
+            return
+
+        member_id = int(self.values[0])
+        member = self.voice_channel.guild.get_member(member_id)
+
+        if member:
+            await self.voice_channel.set_permissions(
+                member,
+                connect=True,
+                speak=True,
+                view_channel=True
+            )
+            await interaction.response.send_message(f"✅ {member.mention} peut maintenant rejoindre ton salon.")
+        else:
+            await interaction.response.send_message("❌ Membre introuvable.")
+
+class InviteView(ui.View):
+    def __init__(self, author, voice_channel, members):
+        super().__init__(timeout=60)
+        self.add_item(InviteSelect(author, voice_channel, members))
+
+
 @bot.command()
 async def invite(ctx):
-    """Commande pour inviter des gens dans ton salon vocal privé."""
-    if ctx.author.voice and ctx.author.voice.channel:
-        channel = ctx.author.voice.channel
+    """Invite un utilisateur dans ton salon vocal via un menu"""
+    if not ctx.author.voice or not ctx.author.voice.channel:
+        await ctx.send("❌ Tu dois être dans ton salon vocal privé pour inviter quelqu’un.")
+        return
 
-        # Optionnel : vérifie que l'utilisateur est bien propriétaire du salon (à adapter selon ton système)
-        # if not channel.name.startswith(f"{ctx.author.name}-"):
-        #     return await ctx.send("❌ Tu ne peux inviter que dans ton propre salon.")
+    channel = ctx.author.voice.channel
+    owner_id = private_channels.get(channel.id)
 
-        # Liste des membres à inviter (hors bots et l'auteur)
-        members = [m for m in ctx.guild.members if not m.bot and m != ctx.author]
+    if owner_id != ctx.author.id:
+        await ctx.send("❌ Tu n'es pas le propriétaire de ce salon.")
+        return
 
-        if not members:
-            return await ctx.send("⚠️ Aucun membre à inviter.")
+    members = ctx.guild.members
+    view = InviteView(ctx.author, channel, members)
 
-        embed = discord.Embed(
-            title="🎧 Invitation vocale",
-            description="Sélectionne les personnes à inviter dans ton salon privé.",
-            color=discord.Color.blue()
-        )
-        await ctx.send(embed=embed, view=SelectView(channel, members))
-    else:
-        await ctx.send("❌ Tu dois être connecté à un salon vocal pour utiliser cette commande.")
+    await ctx.send("👤 Choisis une personne à inviter :", view=view)
 
 
 bot.run(TOKEN)
