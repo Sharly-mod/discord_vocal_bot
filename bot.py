@@ -56,24 +56,29 @@ async def on_voice_state_update(member, before, after):
 
 # UI Select
 class InviteSelect(ui.Select):
-    def __init__(self, author, voice_channel, members, page, total_pages):
+    def __init__(self, author, voice_channel, members, page=0):
         self.author = author
         self.voice_channel = voice_channel
-        self.members = members
         self.page = page
-        self.total_pages = total_pages
+        self.members = [m for m in members if not m.bot and m != author]
 
-        start = page * 25
-        end = start + 25
-        page_members = members[start:end]
+        # Pagination
+        self.max_per_page = 25
+        start = self.page * self.max_per_page
+        end = start + self.max_per_page
+        page_members = self.members[start:end]
 
+        # Créer options (et ignorer les membres sans label)
         options = []
         for member in page_members:
-            if member.bot or member == self.author:
-                continue
-        label = member.display_name.strip() or member.name
-        if label:
-            options.append(discord.SelectOption(label=label[:100], value=str(member.id)))
+            label = member.display_name.strip() or member.name
+            if label:
+                options.append(discord.SelectOption(label=label[:100], value=str(member.id)))
+
+        # Si aucune option, ajoute une option fantôme
+        if not options:
+            options.append(discord.SelectOption(label="Aucun membre", value="none"))
+
         super().__init__(
             placeholder="Choisis un membre à inviter",
             min_values=1,
@@ -86,16 +91,14 @@ class InviteSelect(ui.Select):
             await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
             return
 
-        member_id = int(self.values[0])
-        member = self.voice_channel.guild.get_member(member_id)
+        member_id = self.values[0]
+        if member_id == "none":
+            await interaction.response.send_message("❌ Aucun membre sélectionné.", ephemeral=True)
+            return
 
+        member = self.voice_channel.guild.get_member(int(member_id))
         if member:
-            await self.voice_channel.set_permissions(
-                member,
-                connect=True,
-                speak=True,
-                view_channel=True
-            )
+            await self.voice_channel.set_permissions(member, connect=True, speak=True, view_channel=True)
             await interaction.response.send_message(f"✅ {member.mention} peut maintenant rejoindre ton salon.", ephemeral=True)
         else:
             await interaction.response.send_message("❌ Membre introuvable.", ephemeral=True)
@@ -106,38 +109,30 @@ class InviteView(ui.View):
         super().__init__(timeout=60)
         self.author = author
         self.voice_channel = voice_channel
-        self.members = [m for m in members if not m.bot and m != author]
+        self.members = members
         self.page = page
-        self.total_pages = (len(self.members) - 1) // 25 + 1
+        self.max_per_page = 25
 
-        self.update_items()
+        # Ajoute le menu déroulant
+        self.add_item(InviteSelect(author, voice_channel, members, page))
 
-    def update_items(self):
-        self.clear_items()
-
-        # Ajoute la liste déroulante
-        self.add_item(InviteSelect(self.author, self.voice_channel, self.members, self.page, self.total_pages))
-
-        # Boutons pagination
-        if self.page > 0:
-            self.add_item(PreviousButton(self))
-        if (self.page + 1) < self.total_pages:
-            self.add_item(NextButton(self))
-
-    @ui.button(label="← Précédent", style=discord.ButtonStyle.secondary)
-    async def prev(self, interaction: Interaction, button: ui.Button):
-        if interaction.user != self.author:
-            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
-            return
+        # Ajoute les boutons navigation
+        total_pages = (len([m for m in members if not m.bot and m != author]) - 1) // 25 + 1
 
         if self.page > 0:
-            self.page -= 1
-            self.clear_items()
-            self.select = InviteSelect(self.author, self.voice_channel, self.members, self.page)
-            self.add_item(self.select)
-            self.add_item(ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary))
-            self.add_item(ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary))
-            await interaction.response.edit_message(view=self)
+            self.add_item(ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id="prev"))
+
+        if self.page < total_pages - 1:
+            self.add_item(ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id="next"))
+
+    @ui.button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id="prev", row=1)
+    async def previous(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page - 1))
+
+    @ui.button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id="next", row=1)
+    async def next(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page + 1))
+
 class PreviousButton(ui.Button):
     def __init__(self, view):
         super().__init__(label="← Précédent", style=discord.ButtonStyle.primary)
@@ -188,7 +183,9 @@ async def invite(interaction: discord.Interaction):
         return
 
     members = interaction.guild.members
-    view = InviteView(author, channel, members, page=0)
+    view = InviteView(author, channel, interaction.guild.members)
+    await interaction.response.send_message("👤 Choisis un membre à inviter :", view=view, ephemeral=True)
+
 
     await interaction.response.send_message(
         f"👤 Choisis un membre à inviter : (Page 1 sur {view.total_pages})",
