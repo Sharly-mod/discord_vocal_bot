@@ -56,6 +56,8 @@ async def on_voice_state_update(member, before, after):
         if len(before.channel.members) == 0 and before.channel.id not in WAITING_ROOM_TO_CATEGORY:
             private_channels.pop(before.channel.id, None)
             await before.channel.delete()
+
+
 class MemberSelect(discord.ui.Select):
     def __init__(self, channel: discord.VoiceChannel, members):
         self.channel = channel
@@ -79,10 +81,13 @@ class MemberSelect(discord.ui.Select):
 
         await interaction.response.send_message("✅ Les membres peuvent maintenant **rejoindre et parler** dans ton salon.", ephemeral=True)
 
-class SelectView(discord.ui.View):
-    def __init__(self, channel, members):
-        super().__init__()
-        self.add_item(MemberSelect(channel, members))
+class InviteView(ui.View):
+    def __init__(self, ctx, channel):
+        super().__init__(timeout=60)
+        self.ctx = ctx
+        self.channel = channel
+        members = [m for m in ctx.guild.members if m != ctx.author and not m.bot][:25]
+        self.add_item(InviteSelect(members, channel))
 
 class InviteSelect(ui.Select):
     def __init__(self, author, voice_channel, members):
