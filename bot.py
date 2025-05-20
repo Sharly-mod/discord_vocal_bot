@@ -113,60 +113,26 @@ class InviteView(ui.View):
         self.page = page
         self.max_per_page = 25
 
-        # Ajoute le menu déroulant
         self.add_item(InviteSelect(author, voice_channel, members, page))
 
-        # Ajoute les boutons navigation
-        total_pages = (len([m for m in members if not m.bot and m != author]) - 1) // 25 + 1
+        total_pages = (len([m for m in members if not m.bot and m != author]) - 1) // self.max_per_page + 1
 
-        if self.page > 0:
-            self.add_item(ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id="prev"))
+        if page > 0:
+            prev_button = ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id=f"prev_{page}")
+            prev_button.callback = self.prev_callback
+            self.add_item(prev_button)
 
-        if self.page < total_pages - 1:
-            self.add_item(ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id="next"))
+        if page < total_pages - 1:
+            next_button = ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id=f"next_{page}")
+            next_button.callback = self.next_callback
+            self.add_item(next_button)
 
-    @ui.button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id="prev", row=1)
-    async def previous(self, interaction: discord.Interaction, button: ui.Button):
+    async def prev_callback(self, interaction: Interaction):
         await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page - 1))
 
-    @ui.button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id="next", row=1)
-    async def next(self, interaction: discord.Interaction, button: ui.Button):
+    async def next_callback(self, interaction: Interaction):
         await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page + 1))
 
-class PreviousButton(ui.Button):
-    def __init__(self, view):
-        super().__init__(label="← Précédent", style=discord.ButtonStyle.primary)
-        self.view_ref = view
-
-    async def callback(self, interaction: Interaction):
-        if interaction.user != self.view_ref.author:
-            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
-            return
-
-        self.view_ref.page -= 1
-        self.view_ref.update_items()
-        await interaction.response.edit_message(
-            content=f"👤 Choisis un membre à inviter : (Page {self.view_ref.page + 1} sur {self.view_ref.total_pages})",
-            view=self.view_ref
-        )
-
-
-class NextButton(ui.Button):
-    def __init__(self, view):
-        super().__init__(label="Suivant →", style=discord.ButtonStyle.primary)
-        self.view_ref = view
-
-    async def callback(self, interaction: Interaction):
-        if interaction.user != self.view_ref.author:
-            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
-            return
-
-        self.view_ref.page += 1
-        self.view_ref.update_items()
-        await interaction.response.edit_message(
-            content=f"👤 Choisis un membre à inviter : (Page {self.view_ref.page + 1} sur {self.view_ref.total_pages})",
-            view=self.view_ref
-        )
 # 💬 Slash Command
 @bot.tree.command(name="invite", description="Invite un membre dans ton salon vocal privé")
 async def invite(interaction: discord.Interaction):
@@ -183,13 +149,12 @@ async def invite(interaction: discord.Interaction):
         return
 
     members = interaction.guild.members
-    view = InviteView(author, channel, interaction.guild.members)
-    await interaction.response.send_message("👤 Choisis un membre à inviter :", view=view, ephemeral=True)
-
+    view = InviteView(author, channel, members)
 
     await interaction.response.send_message(
-        f"👤 Choisis un membre à inviter : (Page 1 sur {view.total_pages})",
+        content=f"👤 Choisis un membre à inviter : (Page 1 sur {view.total_pages})",
         view=view,
         ephemeral=True
     )
+
 bot.run(TOKEN)
