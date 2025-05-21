@@ -13,7 +13,38 @@ class PrivateVoice(commands.Cog):
             1372691483014074569: 1374102284656578691,
         }
         self.private_channels = {}
+    @app_commands.command(name="invite", description="Invite un membre dans ton salon vocal privé")
+    async def invite(self, interaction: discord.Interaction):
+        author = interaction.user
+        if not author.voice or not author.voice.channel:
+            await interaction.response.send_message("❌ Tu dois être dans un salon vocal.", ephemeral=True)
+            return
 
+        channel = author.voice.channel
+        owner_id = self.private_channels.get(channel.id)
+
+        vip_role = discord.utils.get(interaction.guild.roles, name="vip++")
+
+        is_owner = owner_id == author.id
+        is_admin = author.guild_permissions.administrator
+        is_vip = vip_role in author.roles if vip_role else False
+
+        if not (is_owner or is_admin or is_vip):
+            await interaction.response.send_message("❌ Tu n'es pas le propriétaire du salon, ni administrateur, ni VIP++.", ephemeral=True)
+            return
+
+        members = interaction.guild.members
+        view = InviteView(author, channel, members)
+
+        await interaction.response.send_message(
+            content=f"👤 Choisis un membre à inviter : (Page 1 sur {view.total_pages})",
+            view=view,
+            ephemeral=True
+        )    
+    async def cog_load(self):
+        self.bot.tree.add_command(self.invite)
+
+        
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         # Création
@@ -117,34 +148,5 @@ class InviteView(ui.View):
     async def next_callback(self, interaction: Interaction):
         await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page + 1))
 
-# 💬 Slash Command
-        @app_commands.command(name="invite", description="Invite un membre dans ton salon vocal privé")
-        async def invite(self, interaction: discord.Interaction):
-            author = interaction.user
-            if not author.voice or not author.voice.channel:
-                await interaction.response.send_message("❌ Tu dois être dans un salon vocal.", ephemeral=True)
-                return
-
-            channel = author.voice.channel
-            owner_id = self.private_channels.get(channel.id)
-
-            vip_role = discord.utils.get(interaction.guild.roles, name="vip++")
-
-            is_owner = owner_id == author.id
-            is_admin = author.guild_permissions.administrator
-            is_vip = vip_role in author.roles if vip_role else False
-
-            if not (is_owner or is_admin or is_vip):
-                await interaction.response.send_message("❌ Tu n'es pas le propriétaire du salon, ni administrateur, ni VIP++.", ephemeral=True)
-                return
-
-            members = interaction.guild.members
-            view = InviteView(author, channel, members)
-
-            await interaction.response.send_message(
-                content=f"👤 Choisis un membre à inviter : (Page 1 sur {view.total_pages})",
-                view=view,
-                ephemeral=True
-            )
 async def setup(bot):
     await bot.add_cog(PrivateVoice(bot))
