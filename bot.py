@@ -151,10 +151,8 @@ async def invite(interaction: discord.Interaction):
     channel = author.voice.channel
     owner_id = private_channels.get(channel.id)
 
-    owner_id = private_channels.get(channel.id)
     vip_role = discord.utils.get(interaction.guild.roles, name="vip++")
 
-# Vérifie si l’auteur est propriétaire, admin ou VIP++
     is_owner = owner_id == author.id
     is_admin = author.guild_permissions.administrator
     is_vip = vip_role in author.roles if vip_role else False
