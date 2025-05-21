@@ -13,6 +13,7 @@ class PrivateVoice(commands.Cog):
             1372691483014074569: 1374102284656578691,
         }
         self.private_channels = {}
+
     @app_commands.command(name="invite", description="Invite un membre dans ton salon vocal privé")
     async def invite(self, interaction: discord.Interaction):
         author = interaction.user
@@ -40,56 +41,59 @@ class PrivateVoice(commands.Cog):
             content=f"👤 Choisis un membre à inviter : (Page 1 sur {view.total_pages})",
             view=view,
             ephemeral=True
-        )    
-    async def cog_load(self):
-        self.bot.tree.add_command(self.invite)
+        )
+        # Fix pour la gestion du timeout : on récupère le message envoyé
+        view.message = await interaction.original_response()
 
-        
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        # Création
+        # Création de salon privé
         if after.channel and after.channel.id in self.WAITING:
             guild = member.guild
             cat = guild.get_channel(self.WAITING[after.channel.id])
             vip = discord.utils.get(guild.roles, name="vip++")
-            overwrites = { guild.default_role: discord.PermissionOverwrite(connect=False),
-                           member: discord.PermissionOverwrite(connect=True, manage_channels=True) }
-            if vip: overwrites[vip] = discord.PermissionOverwrite(connect=True, view_channel=True)
+            overwrites = {
+                guild.default_role: discord.PermissionOverwrite(connect=False),
+                member: discord.PermissionOverwrite(connect=True, manage_channels=True)
+            }
+            if vip:
+                overwrites[vip] = discord.PermissionOverwrite(connect=True, view_channel=True)
             vc = await guild.create_voice_channel(f"Salon de {member.display_name}", overwrites=overwrites, category=cat)
             self.private_channels[vc.id] = member.id
             await member.move_to(vc)
-        # Suppression
-        if before.channel and before.channel.id not in self.WAITING.values():
-            if before.channel.id in self.private_channels and len(before.channel.members) == 0:
-                self.private_channels.pop(before.channel.id, None)
-                await before.channel.delete()
+
+        # Suppression de salon privé vide
+        if before.channel:
+            if before.channel.id in self.private_channels:
+                if len(before.channel.members) == 0:
+                    self.private_channels.pop(before.channel.id, None)
+                    await before.channel.delete()
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: Interaction):
-        # placeholder if besoin global
+        # placeholder si besoin global
         pass
+
+
 # UI Select
 class InviteSelect(ui.Select):
     def __init__(self, author, voice_channel, members, page=0):
         self.author = author
         self.voice_channel = voice_channel
         self.page = page
+        self.max_per_page = 25
         self.members = [m for m in members if not m.bot and m != author]
 
-        # Pagination
-        self.max_per_page = 25
         start = self.page * self.max_per_page
         end = start + self.max_per_page
         page_members = self.members[start:end]
 
-        # Créer options (et ignorer les membres sans label)
         options = []
         for member in page_members:
             label = member.display_name.strip() or member.name
             if label:
                 options.append(discord.SelectOption(label=label[:100], value=str(member.id)))
 
-        # Si aucune option, ajoute une option fantôme
         if not options:
             options.append(discord.SelectOption(label="Aucun membre", value="none"))
 
@@ -126,27 +130,42 @@ class InviteView(ui.View):
         self.members = members
         self.page = page
         self.max_per_page = 25
-        self.total_pages = (len([m for m in members if not m.bot and m != author]) - 1) // self.max_per_page + 1
+        filtered_members = [m for m in members if not m.bot and m != author]
+        self.total_pages = max(1, (len(filtered_members) + self.max_per_page - 1) // self.max_per_page)
+        self.message = None  # sera assigné après envoi du message
 
         self.add_item(InviteSelect(author, voice_channel, members, page))
 
-        total_pages = (len([m for m in members if not m.bot and m != author]) - 1) // self.max_per_page + 1
-
-        if page > 0:
-            prev_button = ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary, custom_id=f"prev_{page}")
+        if self.page > 0:
+            prev_button = ui.Button(label="← Précédent", style=discord.ButtonStyle.secondary)
             prev_button.callback = self.prev_callback
             self.add_item(prev_button)
 
-        if page < total_pages - 1:
-            next_button = ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary, custom_id=f"next_{page}")
+        if self.page < self.total_pages - 1:
+            next_button = ui.Button(label="Suivant →", style=discord.ButtonStyle.secondary)
             next_button.callback = self.next_callback
             self.add_item(next_button)
 
     async def prev_callback(self, interaction: Interaction):
+        if interaction.user != self.author:
+            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
+            return
         await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page - 1))
 
     async def next_callback(self, interaction: Interaction):
+        if interaction.user != self.author:
+            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
+            return
         await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page + 1))
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
 
 async def setup(bot):
     await bot.add_cog(PrivateVoice(bot))
