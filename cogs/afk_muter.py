@@ -11,13 +11,13 @@ class AFKMuter(commands.Cog):
         # Si le membre rejoint un canal vocal
         if after.channel and after.channel.id == self.afk_channel_id:
             try:
-                await member.edit(mute=True, deaf=True)
+                await member.edit(mute=True)
                 print(f"[AFK] {member} a été mute.")
             except discord.Forbidden:
                 print(f"[AFK] Impossible de mute {member} (permissions manquantes).")
         elif before.channel and before.channel.id == self.afk_channel_id and after.channel != before.channel:
             try:
-                await member.edit(mute=False, deaf=False)
+                await member.edit(mute=False)
                 print(f"[AFK] {member} a été unmute.")
             except discord.Forbidden:
                 print(f"[AFK] Impossible de unmute {member} (permissions manquantes).")
