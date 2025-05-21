@@ -26,6 +26,7 @@ bot = MyBot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
+    await bot.tree.sync()
     print(f"✅ {bot.user} est prêt.")
 
 if __name__ == "__main__":

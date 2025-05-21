@@ -1,5 +1,6 @@
 import discord
 from discord import ui, Interaction
+from discord import app_commands
 from discord.ext import commands
 
 class PrivateVoice(commands.Cog):
@@ -117,8 +118,8 @@ class InviteView(ui.View):
         await interaction.response.edit_message(view=InviteView(self.author, self.voice_channel, self.members, self.page + 1))
 
 # 💬 Slash Command
-    @commands.slash_command(name="invite", description="Invite un membre dans ton salon vocal privé")
-    async def invite(self, interaction: discord.Interaction):
+        @app_commands.command(name="invite", description="Invite un membre dans ton salon vocal privé")
+        async def invite(self, interaction: discord.Interaction):
         author = interaction.user
         if not author.voice or not author.voice.channel:
             await interaction.response.send_message("❌ Tu dois être dans un salon vocal.", ephemeral=True)
@@ -145,6 +146,5 @@ class InviteView(ui.View):
             view=view,
             ephemeral=True
         )
-
 async def setup(bot):
     await bot.add_cog(PrivateVoice(bot))
