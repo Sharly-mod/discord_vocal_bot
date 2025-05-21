@@ -4,7 +4,7 @@ from discord.ext import commands
 class AFKMuter(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.afk_channel_id = 123456789012345678  # Remplace par l'ID de ton salon AFK
+        self.afk_channel_id = 1373719204016033893  # Remplace par l'ID de ton salon AFK
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
