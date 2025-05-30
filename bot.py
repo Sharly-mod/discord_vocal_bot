@@ -92,23 +92,30 @@ class InviteSelect(ui.Select):
             options=options
         )
 
-    async def callback(self, interaction: Interaction):
-        if interaction.user != self.author:
-            await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
-            return
+        async def callback(self, interaction: Interaction):
+            if interaction.user != self.author:
+                await interaction.response.send_message("❌ Tu n'as pas lancé ce menu.", ephemeral=True)
+                return
 
-        member_id = self.values[0]
-        if member_id == "none":
-            await interaction.response.send_message("❌ Aucun membre sélectionné.", ephemeral=True)
-            return
+            member_id = self.values[0]
+            if member_id == "none":
+                await interaction.response.send_message("❌ Aucun membre sélectionné.", ephemeral=True)
+                return
 
-        member = self.voice_channel.guild.get_member(int(member_id))
-        if member:
-            await self.voice_channel.set_permissions(member, connect=True, speak=True, view_channel=True)
-            await interaction.response.send_message(f"✅ {member.mention} peut maintenant rejoindre ton salon.", ephemeral=True)
-        else:
-            await interaction.response.send_message("❌ Membre introuvable.", ephemeral=True)
+            member = self.voice_channel.guild.get_member(int(member_id))
+            if member:
+                await self.voice_channel.set_permissions(member, connect=True, speak=True, view_channel=True)
 
+                embed = discord.Embed(
+                    title="✅ Invitation envoyée",
+                    description=f"{member.mention} peut maintenant rejoindre ton salon.",
+                    color=discord.Color.green()
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ Membre introuvable.", ephemeral=True)
 
 class InviteView(ui.View):
     def __init__(self, author, voice_channel, members, page=0):
