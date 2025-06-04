@@ -25,7 +25,7 @@ private_channels = {}
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    await bot.tree.sync(guild=discord.Object(id=1299398593207078982))
     await bot.load_extension("cogs.afk_muter")
     print(f"{bot.user} est prêt.")
 
