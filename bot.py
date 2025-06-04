@@ -136,5 +136,31 @@ async def accept(interaction: discord.Interaction, membre: discord.Member):
     access_requests[channel.id].remove(membre.id)
 
     await interaction.response.send_message(f"✅ {membre.mention} peut maintenant rejoindre le salon.", ephemeral=True)
-    
+
+@bot.tree.command(name="deny", description="Refuse une demande d'accès à ton salon vocal privé")
+@app_commands.describe(membre="Mentionne le membre à refuser")
+async def deny(interaction: discord.Interaction, membre: discord.Member):
+    author = interaction.user
+    if not author.voice or not author.voice.channel:
+        await interaction.response.send_message("❌ Tu dois être dans ton salon vocal privé.", ephemeral=True)
+        return
+
+    channel = author.voice.channel
+    if private_channels.get(channel.id) != author.id:
+        await interaction.response.send_message("❌ Tu n'es pas le propriétaire de ce salon.", ephemeral=True)
+        return
+
+    if membre.id not in access_requests.get(channel.id, []):
+        await interaction.response.send_message("❌ Ce membre n'a pas demandé l'accès à ce salon.", ephemeral=True)
+        return
+
+    access_requests[channel.id].remove(membre.id)
+    await interaction.response.send_message(f"🚫 Accès refusé pour {membre.mention}.", ephemeral=True)
+
+    try:
+        await membre.send(f"🚫 {author.display_name} a refusé ta demande pour rejoindre son salon vocal.")
+    except discord.Forbidden:
+        pass
+
+
 bot.run(TOKEN)
