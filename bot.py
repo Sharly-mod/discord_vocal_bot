@@ -20,7 +20,7 @@ WAITING_ROOM_TO_CATEGORY = {
     1370357006342553620: 1374102357901705367,
     1372691483014074569: 1374102284656578691,
 }
-
+access_requests = {}  # {channel_id: [user_id, ...]}
 private_channels = {}
 
 @bot.event
@@ -94,4 +94,47 @@ async def invite(interaction: discord.Interaction, membre: discord.Member):
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+@bot.tree.command(name="request", description="Demande l'accès à un salon vocal privé")
+@app_commands.describe(membre="Mentionne le membre à qui appartient le salon")
+async def request(interaction: discord.Interaction, membre: discord.Member):
+    requester = interaction.user
+    if not membre.voice or not membre.voice.channel:
+        await interaction.response.send_message("❌ Ce membre n'est pas dans un salon vocal.", ephemeral=True)
+        return
+
+    channel = membre.voice.channel
+    if private_channels.get(channel.id) != membre.id:
+        await interaction.response.send_message("❌ Ce n'est pas un salon privé appartenant à ce membre.", ephemeral=True)
+        return
+
+    access_requests.setdefault(channel.id, []).append(requester.id)
+    await interaction.response.send_message("📨 Demande envoyée.", ephemeral=True)
+
+    try:
+        await membre.send(f"🔔 {requester.display_name} souhaite rejoindre ton salon vocal privé. Utilise `/accept {requester.mention}`.")
+    except discord.Forbidden:
+        pass  # Impossible de DM l'utilisateur
+
+@bot.tree.command(name="accept", description="Accepte un membre dans ton salon vocal privé")
+@app_commands.describe(membre="Mentionne le membre à accepter")
+async def accept(interaction: discord.Interaction, membre: discord.Member):
+    author = interaction.user
+    if not author.voice or not author.voice.channel:
+        await interaction.response.send_message("❌ Tu dois être dans ton salon vocal privé.", ephemeral=True)
+        return
+
+    channel = author.voice.channel
+    if private_channels.get(channel.id) != author.id:
+        await interaction.response.send_message("❌ Tu n'es pas le propriétaire de ce salon.", ephemeral=True)
+        return
+
+    if membre.id not in access_requests.get(channel.id, []):
+        await interaction.response.send_message("❌ Ce membre n'a pas fait de demande pour ce salon.", ephemeral=True)
+        return
+
+    await channel.set_permissions(membre, connect=True, speak=True, view_channel=True)
+    access_requests[channel.id].remove(membre.id)
+
+    await interaction.response.send_message(f"✅ {membre.mention} peut maintenant rejoindre le salon.", ephemeral=True)
+    
 bot.run(TOKEN)
