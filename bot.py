@@ -2,6 +2,7 @@ import discord
 from discord import ui, Interaction, app_commands
 from discord.ext import commands
 import os
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -107,13 +108,32 @@ async def request(interaction: discord.Interaction, membre: discord.Member):
         await interaction.response.send_message("❌ Ce n'est pas un salon privé appartenant à ce membre.", ephemeral=True)
         return
 
-    access_requests.setdefault(channel.id, []).append(requester.id)
-    await interaction.response.send_message("📨 Demande envoyée.", ephemeral=True)
+    access_requests.setdefault(channel.id, [])
+
+    if requester.id in access_requests[channel.id]:
+        await interaction.response.send_message("⏳ Tu as déjà fait une demande pour ce salon.", ephemeral=True)
+        return
+
+    access_requests[channel.id].append(requester.id)
+    await interaction.response.send_message("📨 Demande envoyée. Elle expirera dans 5 minutes.", ephemeral=True)
 
     try:
-        await membre.send(f"🔔 {requester.display_name} souhaite rejoindre ton salon vocal privé. Utilise `/accept {requester.mention}`.")
+        await membre.send(f"🔔 {requester.display_name} souhaite rejoindre ton salon vocal privé. Utilise `/accept {requester.mention}` ou `/deny {requester.mention}`.")
     except discord.Forbidden:
-        pass  # Impossible de DM l'utilisateur
+        pass
+
+    # Auto-suppression après 5 minutes
+    async def remove_request_later():
+        await asyncio.sleep(300)
+        channel_requests = access_requests.get(channel.id)
+        if channel_requests and requester.id in channel_requests:
+            channel_requests.remove(requester.id)
+            try:
+                await requester.send("⌛ Ta demande d'accès a expiré (5 minutes).")
+            except discord.Forbidden:
+                pass
+
+    asyncio.create_task(remove_request_later())
 
 @bot.tree.command(name="accept", description="Accepte un membre dans ton salon vocal privé")
 @app_commands.describe(membre="Mentionne le membre à accepter")
