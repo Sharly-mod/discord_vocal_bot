@@ -161,26 +161,33 @@ async def accept(interaction: discord.Interaction, membre: discord.Member):
 @app_commands.describe(membre="Mentionne le membre à refuser")
 async def deny(interaction: discord.Interaction, membre: discord.Member):
     author = interaction.user
+
+    # Vérifie que l'utilisateur est bien dans un salon vocal
     if not author.voice or not author.voice.channel:
         await interaction.response.send_message("❌ Tu dois être dans ton salon vocal privé.", ephemeral=True)
         return
 
     channel = author.voice.channel
+
+    # Vérifie que c'est bien le salon privé de l'utilisateur
     if private_channels.get(channel.id) != author.id:
         await interaction.response.send_message("❌ Tu n'es pas le propriétaire de ce salon.", ephemeral=True)
         return
 
+    # Vérifie que le membre a bien fait une demande
     if membre.id not in access_requests.get(channel.id, []):
         await interaction.response.send_message("❌ Ce membre n'a pas demandé l'accès à ce salon.", ephemeral=True)
         return
 
+    # Supprime la demande
     access_requests[channel.id].remove(membre.id)
     await interaction.response.send_message(f"🚫 Accès refusé pour {membre.mention}.", ephemeral=True)
 
+    # Tente d'informer la personne par message privé
     try:
         await membre.send(f"🚫 {author.display_name} a refusé ta demande pour rejoindre son salon vocal.")
     except discord.Forbidden:
-        pass
+        pass  # L'utilisateur bloque les DMs ou les a désactivés
 
 
 bot.run(TOKEN)
