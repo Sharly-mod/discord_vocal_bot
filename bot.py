@@ -26,9 +26,19 @@ private_channels = {}
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync(guild=discord.Object(id=1299398593207078982))
-    await bot.load_extension("cogs.afk_muter")
-    print(f"{bot.user} est prêt.")
+    await bot.wait_until_ready()
+    try:
+        # Charge d'abord les extensions
+        await bot.load_extension("cogs.afk_muter")
+        print("Extension afk_muter chargée.")
+
+        # Puis synchronise les commandes
+        await bot.tree.sync(guild=discord.Object(id=1299398593207078982))
+        print("Commandes slash synchronisées.")
+
+        print(f"{bot.user} est prêt.")
+    except Exception as e:
+        print(f"Erreur sync : {e}")
 
 @bot.event
 async def on_voice_state_update(member, before, after):
