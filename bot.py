@@ -128,7 +128,13 @@ async def request(interaction: discord.Interaction, membre: discord.Member):
     await interaction.response.send_message("📨 Demande envoyée. Elle expirera dans 5 minutes.", ephemeral=True)
 
     try:
-        await membre.send(f"🔔 {requester.display_name} souhaite rejoindre ton salon vocal privé. Utilise `/accept {requester.mention}` ou `/deny {requester.mention}`.")
+        await membre.send(
+        f"🔔 **{requester.display_name}** souhaite rejoindre ton salon vocal privé.\n"
+        f"✅ Pour l'accepter, utilise `/accept @pseudo` dans ton salon vocal.\n"
+        f"❌ Pour refuser, utilise `/deny @pseudo`\n"
+        f"📎 Son ID : `{requester.id}` — Salon ID : `{channel.id}`\n"
+        f"📬 Ou utilise les commandes `!accept_id <salon_id> <user_id>` ou `!deny_id <salon_id> <user_id>` ici en message privé."
+    )
     except discord.Forbidden:
         pass
 
@@ -221,4 +227,60 @@ async def deny(interaction: discord.Interaction, membre: discord.Member):
     except discord.Forbidden:
         pass  # L'utilisateur ne peut pas recevoir de DMs
 
+
+@bot.command(name="accept_id")
+async def accept_id(ctx, salon_id: int, user_id: int):
+    if not isinstance(ctx.channel, discord.DMChannel):
+        return  # Ignore en public
+
+    channel = bot.get_channel(salon_id)
+    if not channel:
+        await ctx.send("❌ Salon introuvable.")
+        return
+
+    if private_channels.get(salon_id) != ctx.author.id:
+        await ctx.send("❌ Tu n'es pas le propriétaire de ce salon.")
+        return
+
+    member = channel.guild.get_member(user_id)
+    if not member:
+        await ctx.send("❌ Membre introuvable.")
+        return
+
+    if user_id not in access_requests.get(salon_id, []):
+        await ctx.send("❌ Ce membre n'a pas fait de demande.")
+        return
+
+    await channel.set_permissions(member, connect=True, speak=True, view_channel=True)
+    access_requests[salon_id].remove(user_id)
+    await ctx.send(f"✅ {member.display_name} peut maintenant rejoindre le salon.")
+
+
+@bot.command(name="deny_id")
+async def deny_id(ctx, salon_id: int, user_id: int):
+    if not isinstance(ctx.channel, discord.DMChannel):
+        return  # Ignore en public
+
+    channel = bot.get_channel(salon_id)
+    if not channel:
+        await ctx.send("❌ Salon introuvable.")
+        return
+
+    if private_channels.get(salon_id) != ctx.author.id:
+        await ctx.send("❌ Tu n'es pas le propriétaire de ce salon.")
+        return
+
+    if user_id not in access_requests.get(salon_id, []):
+        await ctx.send("❌ Ce membre n'a pas fait de demande.")
+        return
+
+    access_requests[salon_id].remove(user_id)
+    member = channel.guild.get_member(user_id)
+    await ctx.send(f"🚫 Tu as refusé l'accès à {member.display_name}.")
+
+    try:
+        await member.send(f"🚫 {ctx.author.display_name} a refusé ta demande pour rejoindre son salon vocal.")
+    except discord.Forbidden:
+        pass
+    
 bot.run(TOKEN)
