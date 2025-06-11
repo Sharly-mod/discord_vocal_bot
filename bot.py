@@ -133,7 +133,9 @@ async def request(interaction: discord.Interaction, membre: discord.Member):
         f"✅ Pour l'accepter, utilise `/accept @pseudo` dans ton salon vocal.\n"
         f"❌ Pour refuser, utilise `/deny @pseudo`\n"
         f"📎 Son ID : `{requester.id}` — Salon ID : `{channel.id}`\n"
-        f"📬 Ou utilise les commandes `!accept_id <salon_id> <user_id>` ou `!deny_id <salon_id> <user_id>` ici en message privé."
+        f"📬 Ou tape directement ici :\n"
+        f"➡️ `!accept_id {channel.id} {requester.id}`\n"
+        f"➡️ `!deny_id {channel.id} {requester.id}`"
     )
     except discord.Forbidden:
         pass
