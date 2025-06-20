@@ -4,7 +4,17 @@ from discord.ext import commands
 import os
 import asyncio
 from dotenv import load_dotenv
+from flask import Flask
 
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return 'Hello, Render!'
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
